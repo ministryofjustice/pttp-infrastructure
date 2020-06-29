@@ -11,3 +11,8 @@ output "logging_endpoint_path" {
 output "custom_log_queue_url" {
   value = aws_sqs_queue.custom_log_queue.id
 }
+
+// TODO: Should this be stored as a secret somewhere?
+output "custom_logging_api_key" {
+  value = aws_api_gateway_api_key.custom_log_api_key.value
+}

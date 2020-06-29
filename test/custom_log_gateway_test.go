@@ -13,24 +13,27 @@ import (
 	"time"
 )
 
-// TODO: update to use api key so it can get a 200 fromt he api
-func xTestLogCanBeSubmittedToApi(t *testing.T) {
-	t.Parallel()
+// TODO: update to use api key so it can get a 200 from he api
+func TestLogCanBeSubmittedToApi(t *testing.T) {
+	//t.Parallel()
 
 	terraformOptions := SpinUpTheModule(t)
 	defer terraform.Destroy(t, terraformOptions)
 
-	WriteAMessageToTheApiAndExpect(t, terraformOptions, 200)
+	apiKey := terraform.Output(t, terraformOptions, "custom_logging_api_key")
+
+	WriteAMessageToTheApiAndExpect(t, terraformOptions, 200, apiKey)
 	VerifyThatMessageWasPlacedOnQueue(t, terraformOptions)
 }
 
 func TestLogCanotBeSubmittedToApiWithoutApiKey(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 
 	terraformOptions := SpinUpTheModule(t)
 	defer terraform.Destroy(t, terraformOptions)
 
-	WriteAMessageToTheApiAndExpect(t, terraformOptions, 401)
+	//TODO: is 403 right here? or do we want to persuade aws to give us a 401?
+	WriteAMessageToTheApiAndExpect(t, terraformOptions, 403, "")
 }
 
 func VerifyThatMessageWasPlacedOnQueue(t *testing.T, terraformOptions *terraform.Options) {
@@ -98,7 +101,7 @@ func reformatJsonString(theThing string) string {
 	return string(messageBody)
 }
 
-func WriteAMessageToTheApiAndExpect(t *testing.T, terraformOptions *terraform.Options, code int) {
+func WriteAMessageToTheApiAndExpect(t *testing.T, terraformOptions *terraform.Options, code int, apiKey string) {
 	loggingEndpointPath := terraform.Output(t, terraformOptions, "logging_endpoint_path")
 
 	requestBody, _ := json.Marshal(map[string]string{
@@ -109,7 +112,7 @@ func WriteAMessageToTheApiAndExpect(t *testing.T, terraformOptions *terraform.Op
 		"POST",
 		loggingEndpointPath,
 		requestBody,
-		map[string]string{"Content-Type": "application/json"},
+		map[string]string{"Content-Type": "application/json", "X-API-KEY": apiKey},
 		code,
 		5,
 		time.Second * 5,
