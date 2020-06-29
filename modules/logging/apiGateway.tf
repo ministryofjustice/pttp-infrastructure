@@ -37,3 +37,13 @@ resource "aws_api_gateway_integration_response" "http200" {
     aws_api_gateway_integration.sqs-integration
   ]
 }
+
+resource "aws_api_gateway_deployment" "custom_log_api_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.logging_gateway.id
+  stage_name = "production"
+
+  depends_on = [
+    aws_api_gateway_method.proxy,
+    aws_api_gateway_integration.sqs-integration
+  ]
+}

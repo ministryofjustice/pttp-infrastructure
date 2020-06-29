@@ -13,10 +13,7 @@ resource "aws_api_gateway_integration" "sqs-integration" {
 
   request_templates = {
     "application/json" = <<EOF
-Action=SendMessage&MessageBody={
-  "method": "$context.httpMethod",
-  "body-json" : $input.json('$'),
-}"
+Action=SendMessage&MessageBody=$input.json('$')
 EOF
   }
 }

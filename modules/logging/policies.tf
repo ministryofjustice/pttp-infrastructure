@@ -4,7 +4,7 @@ resource "aws_iam_policy" "api-gateway-sqs-send-msg-policy" {
 }
 
 data "template_file" "gateway_policy" {
-  template = file("modules/logging/policies.json")
+  template = file("${path.module}/policies.json")
 
   vars = {
     sqs_arn   = aws_sqs_queue.custom_log_queue.arn
