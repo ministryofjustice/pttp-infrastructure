@@ -72,6 +72,15 @@ module "logging_vpc" {
   }
 }
 
+module "customLoggingApi" {
+  source = "./modules/customLoggingApi"
+  prefix = module.label.id
+
+  providers = {
+    aws = aws.env
+  }
+}
+
 module "logging" {
   source = "./modules/logging"
   vpc_id = module.logging_vpc.vpc_id

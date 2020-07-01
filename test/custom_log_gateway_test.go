@@ -15,7 +15,7 @@ import (
 
 var _t *testing.T
 var _terraformOptions *terraform.Options
-const retryDelay = time.Second * 2
+const retryDelay = time.Second * 5
 
 
 func TestLogCanBeReadFromQueue(t *testing.T) {
@@ -158,12 +158,10 @@ func WriteAMessageToTheApiAndExpect(code int, apiKey string) {
 
 func SpinUpTheModule(){
 	_terraformOptions = &terraform.Options{
-		// Set the path to the Terraform code that will be tested.
-		TerraformDir: "../modules/logging",
-		Vars:         map[string]interface{}{"prefix": "david-test", "vpc_id": ""},
+		TerraformDir: "../modules/customLoggingApi",
+		Vars:         map[string]interface{}{"prefix": "david-test"},
 	}
 
-	// Run "terraform init" and "terraform apply". Fail the test if there are any errors.
 	terraform.InitAndApplyAndIdempotent(_t, _terraformOptions)
 }
 

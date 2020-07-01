@@ -50,11 +50,11 @@ resource "aws_api_gateway_deployment" "custom_log_api_deployment" {
 }
 
 resource "aws_api_gateway_api_key" "custom_log_api_key" {
-  name = "custom_log_api_key"
+  name = "${var.prefix}-custom_log_api_key"
 }
 
 resource "aws_api_gateway_usage_plan" "custom_log_api_usage_plan" {
-  name         = "custom_log_api_usage_plan"
+  name         = "${var.prefix}-custom_log_api_usage_plan"
 
   api_stages {
     api_id = aws_api_gateway_rest_api.logging_gateway.id
