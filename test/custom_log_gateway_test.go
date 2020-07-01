@@ -13,57 +13,88 @@ import (
 	"time"
 )
 
-// TODO: update to use api key so it can get a 200 from he api
-func TestLogCanBeSubmittedToApi(t *testing.T) {
-	//t.Parallel()
+var _t *testing.T
+var _terraformOptions *terraform.Options
+const retryDelay = time.Second * 2
 
-	terraformOptions := SpinUpTheModule(t)
-	defer terraform.Destroy(t, terraformOptions)
 
-	apiKey := terraform.Output(t, terraformOptions, "custom_logging_api_key")
+func TestLogCanBeReadFromQueue(t *testing.T) {
+	SetUpTest(t)
 
-	WriteAMessageToTheApiAndExpect(t, terraformOptions, 200, apiKey)
-	VerifyThatMessageWasPlacedOnQueue(t, terraformOptions)
+	SpinUpTheModule()
+	defer CleaningUpAtTheEnd()
+	WriteAMessageToTheApiAndExpect(200, withCorrectApiKey())
+	VerifyThatMessageWasPlacedOnQueue()
 }
 
-func TestLogCanotBeSubmittedToApiWithoutApiKey(t *testing.T) {
-	//t.Parallel()
+func TestLogCanBeSubmittedToAPIWithCorrectKey(t *testing.T) {
+	SetUpTest(t)
 
-	terraformOptions := SpinUpTheModule(t)
-	defer terraform.Destroy(t, terraformOptions)
-
-	//TODO: is 403 right here? or do we want to persuade aws to give us a 401?
-	WriteAMessageToTheApiAndExpect(t, terraformOptions, 403, "")
+	SpinUpTheModule()
+	defer CleaningUpAtTheEnd()
+	WriteAMessageToTheApiAndExpect(200, withCorrectApiKey())
 }
 
-func VerifyThatMessageWasPlacedOnQueue(t *testing.T, terraformOptions *terraform.Options) {
+func TestLogCannotBeSubmittedToApiWithoutApiKey(t *testing.T) {
+	SetUpTest(t)
+
+	SpinUpTheModule()
+	defer CleaningUpAtTheEnd()
+	WriteAMessageToTheApiAndExpect(403, "")
+
+
+}
+
+
+func TestThatQueueHasServerSideEncryptionEnabled(t *testing.T) {
+	SetUpTest(t)
+
+	SpinUpTheModule()
+	defer CleaningUpAtTheEnd()
+	VerifyThatQueueEncryptionIsEnabled(t)
+}
+
+func SetUpTest(t *testing.T) {
+	_t = t
+}
+
+func CleaningUpAtTheEnd() string {
+	return terraform.Destroy(_t, _terraformOptions)
+}
+
+func withCorrectApiKey() string {
+	apiKey := terraform.Output(_t, _terraformOptions, "custom_logging_api_key")
+	return apiKey
+}
+
+func VerifyThatMessageWasPlacedOnQueue() {
 	sess, _ := session.NewSession(&aws.Config{Region: aws.String("eu-west-2")})
 
-	svc := sqs.New(sess)
+	sqsService := sqs.New(sess)
 
-	qURL := terraform.Output(t, terraformOptions, "custom_log_queue_url")
+	queueUrl := terraform.Output(_t, _terraformOptions, "custom_log_queue_url")
 
-	result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
+	result, err := sqsService.ReceiveMessage(&sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
 		},
 		MessageAttributeNames: []*string{
 			aws.String(sqs.QueueAttributeNameAll),
 		},
-		QueueUrl:            &qURL,
+		QueueUrl:            &queueUrl,
 		MaxNumberOfMessages: aws.Int64(1),
 		VisibilityTimeout:   aws.Int64(20),  // 20 seconds
 		WaitTimeSeconds:     aws.Int64(0),
 	})
 
 	if err != nil {
-		fmt.Println("Error", err)
+		fmt.Println("***Error:***", err.Error())
 		return
 	}
 
 	if len(result.Messages) == 0 {
-		t.Fatalf("Received no messages")
-		t.Fail()
+		_t.Fatalf("***Received no messages***")
+		_t.Fail()
 		return
 	}
 
@@ -78,11 +109,11 @@ func VerifyThatMessageWasPlacedOnQueue(t *testing.T, terraformOptions *terraform
 
 
 	if messageBody != expectedMessageBody {
-		log.Println("expected message:")
+		log.Println("***expected message***:")
 		log.Println(expectedMessageBody)
-		log.Println("but got:")
+		log.Println("***but got***:")
 		log.Println(messageBody)
-		t.Fail()
+		_t.Fail()
 	}
 }
 
@@ -91,7 +122,7 @@ func reformatJsonString(theThing string) string {
 	err := json.Unmarshal([]byte(theThing), &messageBodyMap)
 
 	if err != nil {
-		log.Println("unable to reformat json")
+		log.Println("***Unable to reformat json***")
 		log.Println(err.Error())
 		log.Println(theThing)
 	}
@@ -101,38 +132,61 @@ func reformatJsonString(theThing string) string {
 	return string(messageBody)
 }
 
-func WriteAMessageToTheApiAndExpect(t *testing.T, terraformOptions *terraform.Options, code int, apiKey string) {
-	loggingEndpointPath := terraform.Output(t, terraformOptions, "logging_endpoint_path")
+func WriteAMessageToTheApiAndExpect(code int, apiKey string) {
+	loggingEndpointPath := terraform.Output(_t, _terraformOptions, "logging_endpoint_path")
 
 	requestBody, _ := json.Marshal(map[string]string{
 		"foo": "bar",
 	})
 
-	_, err := http_helper.HTTPDoWithRetryE(t,
+	_, err := http_helper.HTTPDoWithRetryE(_t,
 		"POST",
 		loggingEndpointPath,
 		requestBody,
 		map[string]string{"Content-Type": "application/json", "X-API-KEY": apiKey},
 		code,
 		5,
-		time.Second * 5,
+		retryDelay,
 		nil,
 	)
 
 	if err != nil {
-		t.Fatalf("Api did not return code '%d'", code)
-		t.Fail()
+		_t.Fatalf("***Api did not return code '%d'***", code)
+		_t.Fail()
 	}
 }
 
-func SpinUpTheModule(t *testing.T) *terraform.Options {
-	terraformOptions := &terraform.Options{
+func SpinUpTheModule(){
+	_terraformOptions = &terraform.Options{
 		// Set the path to the Terraform code that will be tested.
 		TerraformDir: "../modules/logging",
 		Vars:         map[string]interface{}{"prefix": "david-test", "vpc_id": ""},
 	}
 
 	// Run "terraform init" and "terraform apply". Fail the test if there are any errors.
-	terraform.InitAndApplyAndIdempotent(t, terraformOptions)
-	return terraformOptions
+	terraform.InitAndApplyAndIdempotent(_t, _terraformOptions)
+}
+
+func VerifyThatQueueEncryptionIsEnabled(t *testing.T) {
+	sess, _ := session.NewSession(&aws.Config{Region: aws.String("eu-west-2")})
+
+	sqsService := sqs.New(sess)
+
+	queueUrl := terraform.Output(_t, _terraformOptions, "custom_log_queue_url")
+
+	kmsMasterKeyIdAttributeName := "KmsMasterKeyId"
+
+	requiredQueueAttributeNames := []*string{&kmsMasterKeyIdAttributeName}
+
+	queueAttributesInput := sqs.GetQueueAttributesInput{
+		AttributeNames: requiredQueueAttributeNames,
+		QueueUrl:       &queueUrl,
+	}
+
+	queueAttributes, _ := sqsService.GetQueueAttributes(&queueAttributesInput)
+
+	if queueAttributes.Attributes[kmsMasterKeyIdAttributeName] == nil {
+		t.Fatal("***Queue does not have encryption enabled***")
+		t.Fail()
+	}
 }
