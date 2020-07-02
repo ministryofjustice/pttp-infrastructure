@@ -2,11 +2,10 @@ package test
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
+	"github.com/gruntwork-io/terratest/modules/http-helper"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"log"
 	"testing"
@@ -41,8 +40,6 @@ func TestLogCannotBeSubmittedToApiWithoutApiKey(t *testing.T) {
 	SpinUpTheModule()
 	defer CleaningUpAtTheEnd()
 	WriteAMessageToTheApiAndExpect(403, "")
-
-
 }
 
 
@@ -54,17 +51,18 @@ func TestThatQueueHasServerSideEncryptionEnabled(t *testing.T) {
 	VerifyThatQueueEncryptionIsEnabled(t)
 }
 
-func SetUpTest(t *testing.T) {
-	_t = t
+
+func SpinUpTheModule(){
+	_terraformOptions = &terraform.Options{
+		TerraformDir: "../modules/customLoggingApi",
+		Vars:         map[string]interface{}{"prefix": "david-test", "region": "eu-west-2"},
+	}
+
+	terraform.InitAndApplyAndIdempotent(_t, _terraformOptions)
 }
 
 func CleaningUpAtTheEnd() string {
 	return terraform.Destroy(_t, _terraformOptions)
-}
-
-func withCorrectApiKey() string {
-	apiKey := terraform.Output(_t, _terraformOptions, "custom_logging_api_key")
-	return apiKey
 }
 
 func VerifyThatMessageWasPlacedOnQueue() {
@@ -88,7 +86,9 @@ func VerifyThatMessageWasPlacedOnQueue() {
 	})
 
 	if err != nil {
-		fmt.Println("***Error:***", err.Error())
+		_t.Fatalf("***Error:***")
+		_t.Fatalf(err.Error())
+		_t.Fail()
 		return
 	}
 
@@ -117,19 +117,28 @@ func VerifyThatMessageWasPlacedOnQueue() {
 	}
 }
 
-func reformatJsonString(theThing string) string {
-	var messageBodyMap map[string]interface{}
-	err := json.Unmarshal([]byte(theThing), &messageBodyMap)
+func VerifyThatQueueEncryptionIsEnabled(t *testing.T) {
+	sess, _ := session.NewSession(&aws.Config{Region: aws.String("eu-west-2")})
 
-	if err != nil {
-		log.Println("***Unable to reformat json***")
-		log.Println(err.Error())
-		log.Println(theThing)
+	sqsService := sqs.New(sess)
+
+	queueUrl := terraform.Output(_t, _terraformOptions, "custom_log_queue_url")
+
+	kmsMasterKeyIdAttributeName := "KmsMasterKeyId"
+
+	requiredQueueAttributeNames := []*string{&kmsMasterKeyIdAttributeName}
+
+	queueAttributesInput := sqs.GetQueueAttributesInput{
+		AttributeNames: requiredQueueAttributeNames,
+		QueueUrl:       &queueUrl,
 	}
 
-	messageBody, _ := json.Marshal(messageBodyMap)
+	queueAttributes, _ := sqsService.GetQueueAttributes(&queueAttributesInput)
 
-	return string(messageBody)
+	if queueAttributes.Attributes[kmsMasterKeyIdAttributeName] == nil {
+		t.Fatal("***Queue does not have encryption enabled***")
+		t.Fail()
+	}
 }
 
 func WriteAMessageToTheApiAndExpect(code int, apiKey string) {
@@ -156,35 +165,26 @@ func WriteAMessageToTheApiAndExpect(code int, apiKey string) {
 	}
 }
 
-func SpinUpTheModule(){
-	_terraformOptions = &terraform.Options{
-		TerraformDir: "../modules/customLoggingApi",
-		Vars:         map[string]interface{}{"prefix": "david-test"},
-	}
-
-	terraform.InitAndApplyAndIdempotent(_t, _terraformOptions)
+func withCorrectApiKey() string {
+	apiKey := terraform.Output(_t, _terraformOptions, "custom_logging_api_key")
+	return apiKey
 }
 
-func VerifyThatQueueEncryptionIsEnabled(t *testing.T) {
-	sess, _ := session.NewSession(&aws.Config{Region: aws.String("eu-west-2")})
+func reformatJsonString(theThing string) string {
+	var messageBodyMap map[string]interface{}
+	err := json.Unmarshal([]byte(theThing), &messageBodyMap)
 
-	sqsService := sqs.New(sess)
-
-	queueUrl := terraform.Output(_t, _terraformOptions, "custom_log_queue_url")
-
-	kmsMasterKeyIdAttributeName := "KmsMasterKeyId"
-
-	requiredQueueAttributeNames := []*string{&kmsMasterKeyIdAttributeName}
-
-	queueAttributesInput := sqs.GetQueueAttributesInput{
-		AttributeNames: requiredQueueAttributeNames,
-		QueueUrl:       &queueUrl,
+	if err != nil {
+		log.Println("***Unable to reformat json***")
+		log.Println(err.Error())
+		log.Println(theThing)
 	}
 
-	queueAttributes, _ := sqsService.GetQueueAttributes(&queueAttributesInput)
+	messageBody, _ := json.Marshal(messageBodyMap)
 
-	if queueAttributes.Attributes[kmsMasterKeyIdAttributeName] == nil {
-		t.Fatal("***Queue does not have encryption enabled***")
-		t.Fail()
-	}
+	return string(messageBody)
+}
+
+func SetUpTest(t *testing.T) {
+	_t = t
 }

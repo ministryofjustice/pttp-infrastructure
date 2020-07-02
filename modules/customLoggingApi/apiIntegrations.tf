@@ -4,7 +4,7 @@ resource "aws_api_gateway_integration" "sqs-integration" {
   rest_api_id = aws_api_gateway_rest_api.logging_gateway.id
   type = "AWS"
   integration_http_method = "POST"
-  uri = "arn:aws:apigateway:eu-west-2:sqs:path/${aws_sqs_queue.custom_log_queue.name}"
+  uri = "arn:aws:apigateway:${var.region}:sqs:path/${aws_sqs_queue.custom_log_queue.name}"
   credentials = aws_iam_role.custom-logging-api-gateway-role.arn
 
   request_parameters = {
@@ -12,9 +12,7 @@ resource "aws_api_gateway_integration" "sqs-integration" {
   }
 
   request_templates = {
-    "application/json" = <<EOF
-Action=SendMessage&MessageBody=$input.json('$')
-EOF
+    "application/json" = "Action=SendMessage&MessageBody=$input.json('$')"
   }
 }
 
