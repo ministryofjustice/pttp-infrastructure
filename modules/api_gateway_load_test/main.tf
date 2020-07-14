@@ -23,11 +23,9 @@ resource "aws_instance" "web" {
 #!/bin/bash
 curl --silent --location https://rpm.nodesource.com/setup_12.x | bash -
 yum -y install nodejs
-echo ==============
-export TARGET_URL=${var.api_url}
-export API_KEY=${var.api_key}
-echo $TARGET_URL
-echo $API_KEY
+touch ~/.bash_profile
+echo "export TARGET_URL=${var.api_url}\n" >> ~/.bash_profile
+echo "export API_KEY=${var.api_key}\n" >> ~/.bash_profile
 npm install -g artillery --allow-root --unsafe-perm=true
 touch /etc/api_load_test.yml | echo ${local.artillery_config} >> /etc/api_load_test.yml
 artillery run /etc/api_load_test.yml
