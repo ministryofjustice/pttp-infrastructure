@@ -202,3 +202,15 @@ module "shared_services_log_destination" {
     aws = aws.env
   }
 }
+
+module "api_gateway_load_test" {
+  source = "./modules/api_gateway_load_test"
+
+  providers = {
+    aws = aws.env
+  }
+
+  api_key = module.customLoggingApi.custom_logging_api_key
+  api_url = module.customLoggingApi.logging_endpoint_path
+  prefix = module.label.id
+}
