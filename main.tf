@@ -209,7 +209,7 @@ module "api_gateway_load_test" {
   enable_load_testing = var.enable_load_testing
 
   api_key = module.customLoggingApi.custom_logging_api_key
-  api_url = module.customLoggingApi.logging_endpoint_path
+  api_url = module.customLoggingApi.base_api_url
   prefix  = module.label.id
 
   providers = {

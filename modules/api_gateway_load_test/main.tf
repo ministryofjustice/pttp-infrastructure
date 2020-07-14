@@ -1,6 +1,14 @@
 locals {
-  enabled          = var.enable_load_testing ? 4 : 0
-  artillery_config = file("${path.module}/api_load_test.yml")
+  enabled = var.enable_load_testing ? 4 : 0
+}
+
+data "template_file" "foo" {
+  template = "${file("${path.module}/api_load_test.yml")}"
+
+  vars = {
+    api_url = var.api_url
+    api_key = var.api_key
+  }
 }
 
 resource "aws_default_vpc" "default" {
@@ -23,11 +31,9 @@ resource "aws_instance" "web" {
 #!/bin/bash
 curl --silent --location https://rpm.nodesource.com/setup_12.x | bash -
 yum -y install nodejs
-touch ~/.bash_profile
-echo "export TARGET_URL=${var.api_url}\n" >> ~/.bash_profile
-echo "export API_KEY=${var.api_key}\n" >> ~/.bash_profile
 npm install -g artillery --allow-root --unsafe-perm=true
-touch /etc/api_load_test.yml | echo ${local.artillery_config} >> /etc/api_load_test.yml
+touch /etc/api_load_test.yml 
+echo '${data.template_file.foo.rendered}' >> /etc/api_load_test.yml
 artillery run /etc/api_load_test.yml
 EOF
 }

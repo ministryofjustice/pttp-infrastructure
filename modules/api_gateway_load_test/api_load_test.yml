@@ -1,11 +1,11 @@
 config:
-  target: '"{{ $processEnvironment.TARGET_URL }}"'
+  target: "${api_url}"
   phases:
     - duration: 60
       arrivalRate: 20
   defaults:
     headers:
-      x-my-service-auth: '"{{ $processEnvironment.API_KEY }}"'
+      x-api-key: "${api_key}"
 scenarios:
   - flow:
     - post:
