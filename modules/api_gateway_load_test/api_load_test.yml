@@ -1,0 +1,14 @@
+config:
+  target: '"{{ $processEnvironment.TARGET_URL }}"'
+  phases:
+    - duration: 60
+      arrivalRate: 20
+  defaults:
+    headers:
+      x-my-service-auth: '"{{ $processEnvironment.API_KEY }}"'
+scenarios:
+  - flow:
+    - post:
+        url: "/logs"
+        json:
+          hello: "world"

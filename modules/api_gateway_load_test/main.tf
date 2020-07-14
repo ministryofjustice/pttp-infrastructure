@@ -1,31 +1,28 @@
+locals {
+  enabled = var.enable_load_testing ? 4 : 0
+}
 
-resource "aws_ec2" "load_test_machine_thing" {
+resource "aws_instance" "web" {
+  count         = local.enabled
+  ami           = "ami-04122be15033aa7ec"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "load_testing_instance"
+  }
+
   provisioner "file" {
-    source      = data.template_file.api_gateway_template.filename
-    destination = "/tmp/apiGateway.yml"
+    source      = "${path.module}/api_load_test.yml"
+    destination = "/etc/api_load_test.yml"
   }
 
   provisioner "remote-exec" {
-    inline      = ["artillery run -o thing.json /tmp/apiGateway.yml", "cat thing.json"]
+    inline = [
+      "yum install node",
+      "export TARGET_URL=${var.api_url}",
+      "export API_KEY=${var.api_key}",
+      "npm i -g artillery",
+      "artillery run /etc/api_load_test.yml"
+    ]
   }
-}
-
-data "template_file" "api_gateway_template" {
-  template = file("${path.module}/apiGateway.yml.tpl")
-  vars = {
-    target_url = var.api_url
-    api_key = var.api_key
-  }
-}
-
-variable "api_key" {
-  type = string
-}
-
-variable "api_url" {
-  type = string
-}
-
-variable "prefix" {
-  type = string
 }

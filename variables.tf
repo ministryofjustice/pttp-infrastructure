@@ -59,3 +59,7 @@ variable "enable_cloudtrail_log_shipping_to_cloudwatch" {
 variable "enable_shared_services_log_destination" {
   type = bool
 }
+
+variable "enable_load_testing" {
+  type = bool
+}
