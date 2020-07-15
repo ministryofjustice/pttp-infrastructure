@@ -1,5 +1,5 @@
 locals {
-  enabled = var.enable_load_testing ? 4 : 0
+  enabled = var.enable_load_testing ? 1 : 0
 }
 
 data "template_file" "foo" {
@@ -8,20 +8,24 @@ data "template_file" "foo" {
   vars = {
     api_url = var.api_url
     api_key = var.api_key
+    arrival_rate = var.arrival_rate
+    duration = var.duration
   }
 }
 
 resource "aws_default_vpc" "default" {
+  count                  = local.enabled
+
   tags = {
     Name = "Default VPC"
   }
 }
 
 resource "aws_instance" "web" {
-  count                  = local.enabled
+  count                  = local.enabled * local.instances
   ami                    = "ami-04122be15033aa7ec"
   instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.example.id]
+  vpc_security_group_ids = [aws_security_group.example[0].id]
 
   tags = {
     Name = "load_testing_instance"
@@ -29,6 +33,7 @@ resource "aws_instance" "web" {
 
   user_data = <<EOF
 #!/bin/bash
+
 curl --silent --location https://rpm.nodesource.com/setup_12.x | bash -
 yum -y install nodejs
 npm install -g artillery --allow-root --unsafe-perm=true
@@ -40,6 +45,8 @@ EOF
 
 resource "aws_security_group" "example" {
   name = "${var.prefix}-load-test-security-group"
+
+  count                  = local.enabled
 
   egress {
     from_port   = 0
@@ -58,5 +65,5 @@ resource "aws_security_group" "example" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  vpc_id = "${aws_default_vpc.default.id}"
+  vpc_id = "${aws_default_vpc.default[0].id}"
 }

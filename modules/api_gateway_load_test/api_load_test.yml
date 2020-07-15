@@ -1,8 +1,8 @@
 config:
   target: "${api_url}"
   phases:
-    - duration: 60
-      arrivalRate: 20
+    - duration: ${duration}
+      arrivalRate: ${arrival_rate}
   defaults:
     headers:
       x-api-key: "${api_key}"

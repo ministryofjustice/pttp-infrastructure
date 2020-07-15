@@ -210,6 +210,10 @@ module "api_gateway_load_test" {
 
   api_key = module.customLoggingApi.custom_logging_api_key
   api_url = module.customLoggingApi.base_api_url
+  arrival_rate = 200
+  instance_count = 10
+  duration = 60
+
   prefix  = module.label.id
 
   providers = {

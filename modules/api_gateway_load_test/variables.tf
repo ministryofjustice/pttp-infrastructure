@@ -6,6 +6,18 @@ variable "api_url" {
   type = string
 }
 
+variable "arrival_rate" {
+  type = number
+}
+
+variable "instance_count" {
+  type = number
+}
+
+variable "duration" {
+  type = number
+}
+
 variable "prefix" {
   type = string
 }
