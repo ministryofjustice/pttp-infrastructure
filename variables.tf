@@ -7,6 +7,10 @@ variable "owner_email" {
   type = string
 }
 
+variable "environment_name" {
+  default = ""
+}
+
 variable "assume_role" {
   type = string
 }
@@ -54,6 +58,7 @@ variable "critical_notification_recipients" {
 
 variable "enable_cloudtrail_log_shipping_to_cloudwatch" {
   type = bool
+  default = false
 }
 
 variable "enable_shared_services_log_destination" {
