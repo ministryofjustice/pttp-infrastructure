@@ -22,13 +22,13 @@ resource "aws_default_vpc" "default" {
 }
 
 resource "aws_instance" "web" {
-  count                  = local.enabled * local.instances
+  count                  = local.enabled * var.instance_count
   ami                    = "ami-04122be15033aa7ec"
   instance_type          = "t2.micro"
   vpc_security_group_ids = [aws_security_group.example[0].id]
 
   tags = {
-    Name = "load_testing_instance"
+    Name = "${var.prefix}-load-testing-instance"
   }
 
   user_data = <<EOF
