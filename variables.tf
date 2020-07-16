@@ -7,10 +7,6 @@ variable "owner_email" {
   type = string
 }
 
-variable "environment_name" {
-  default = ""
-}
-
 variable "assume_role" {
   type = string
 }
