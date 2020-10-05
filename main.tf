@@ -1,5 +1,5 @@
 terraform {
-  required_version = "> 0.12.0"
+  required_version = "0.13.4"
 
   backend "s3" {
     bucket         = "pttp-ci-infrastructure-client-core-tf-state"
@@ -34,7 +34,7 @@ data "aws_caller_identity" "shared_services_account" {}
 
 module "label" {
   source  = "cloudposse/label/null"
-  version = "0.16.0"
+  version = "0.19.2"
 
   namespace = "pttp"
   stage     = terraform.workspace
